@@ -1,0 +1,63 @@
+package com.Flight.Service;
+
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+
+import com.Flight.Dto.ReservationRequest;
+import com.Flight.Entities.Flight;
+import com.Flight.Entities.Passenger;
+import com.Flight.Entities.Reservation;
+import com.Flight.Repository.FlightRepository;
+import com.Flight.Repository.PassengerRepository;
+import com.Flight.Repository.ReservationRepository;
+import com.Flight.Utility.EmailUtil;
+import com.Flight.Utility.PDFGenerator;
+
+@Service
+public class ReservationServiceImpl implements ReservationService {
+
+	@Autowired
+	private PassengerRepository passengerRepo;
+	
+	@Autowired
+	private FlightRepository flightRepo;
+	
+	@Autowired 
+	private ReservationRepository reservationRepo;
+	
+    @Autowired
+	private PDFGenerator pdfGenerator;
+    
+    @Autowired
+    private EmailUtil emailUtil;
+	
+	@Override
+	public Reservation bookFlight(ReservationRequest request) {
+		
+        Passenger passenger = new Passenger();
+		passenger.setFirstName(request.getFirstName());
+		passenger.setLastName(request.getLastName());
+		passenger.setMiddleName(request.getMiddleName());
+		passenger.setEmail(request.getEmail());
+		passenger.setPhone(request.getPhone());
+		passengerRepo.save(passenger);
+		
+		long flightId = request.getFlightId();
+		Optional<Flight> findById = flightRepo.findById(flightId);
+		Flight flight = findById.get();
+		
+		Reservation reservation = new Reservation();
+		reservation.setFlight(flight);
+		reservation.setPassenger(passenger);
+		reservation.setCheckedIn(false);
+		reservation.setNumbersOfBags(0);
+		reservationRepo.save(reservation);
+		 String filePath = "C:\\Users\\vikas\\Documents\\workspace-spring-tool-suite-4-4.8.1.RELEASE\\Flight_ReservationApp\\Tickets\\"+ reservation.getId() + ".pdf";
+		pdfGenerator.generatePDF(filePath, reservation);
+		emailUtil.sendItinerary(passenger.getEmail(),filePath);
+		return reservation;
+	}
+}
